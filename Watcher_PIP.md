@@ -12,61 +12,64 @@ _The purpose of this PIP is to introduce a way for clients to programmatically a
 
 _One example is to create an out-of-band application that 'watches' a given subscription and scales the consumer application horizontally when the backlog becomes unacceptably high._
 
-_A second example is for an application to monitor all subscriptions to a topic and programmatically determine if/when a given downstream subscription is behind and send a notification_
-
-_A third example is for applications to watch a 
 
 ### Public Interfaces
 
-```java
-public interface TopicEventListener {
+_Briefly list any new interfaces that will be introduced as part of this proposal or any existing interfaces that will be removed or changed. The purpose of this section is to concisely call out the public contract that will come along with this feature._
 
-    public void onConsumerConnect(String topic, String subscription, ConsumerCnx cnx);
-    
-    public void onConsumerStats(String topic, String subscription, ServerConsumerStats[] stats);
-    
-    public void onConsumerDisconnect(String topic, String subscription, ConsumerCnx cnx);
-    
-    public void onProducerConnect(String topic, ProducerCnx cnx);
-    
-    public void onProducerStats(String topic, ServerProducerStats[] stats);
-    
-    public void onProducerDisconnect(String topic, ProducerCnx cnx);
-    
-    public void onSubscriptionCreate(String topic, String subscription, SubscriptionType type, SubscriptionInitialPosition position);
-    
-    public void onSubscriptionBacklog(String topic, String subscription, long backlogSize);
-    
-    public void onSubscriptionCatchUp(String topic, String subscription);
-    
-    public void onSubscriptionSeek(String topic, String subscription, long oldPosition, long newPosition);
+Proposing the following changes:
 
-    public void onSubscriptionIdle(String topic, String subscription);
+- Additional wire protocol commands:
+    - CommandWatch
+    - CommandWatchSuccess
+    - CommandPauseWatch
+    - CommandPauseWatchSuccess
+    - CommandResumeWatch
+    - CommandResumeWatchSuccess
+    - CommandUnWatch
+    - CommandUnWatchSuccess
+    - CommandWatchEvent
+        - ConsumerConnect
+        - ConsumerDisconnect
+        - ConsumerStuck
+        - ConsumerUnstick
+        - ProducerConnect
+        - ProducerDisconnect
+        - SubscriptionCreate
+        - SubscriptionBacklog
+        - SubscriptionCatchUp
+        - SubscriptionIdle
+        - SubscriptionUnsubscribe
+        - TopicBacklogEviction
+        - TopicIdle
+        - TopicPartitionCountChange
+        - TopicSchemaAdd
+        - TopicSchemaDelete
+        - TopicSchemaUpdate
+        - TopicTermination
+        - WatcherConnected
+        - WatcherPaused
+        - WatcherUnPaused
+        - WatcherDisconnected
+- Introduce new interfaces to the Pulsar API:
+    - WatcherBuilder
+    - Watcher
+    - WatchEventListener
+- New configuration options in broker.conf:
+    - enableWatchers // Whether the broker will allow watchers to connect
+    - defaultWatcherConsumerStuckPeriodMillis // If a consumer stays at zero permits for more than this period of time the ConsumerStuck event will be fired
+    - defaultWatcherSubscriptionIdleGracePeriodMillis // default grace period before subscription is considered 'idle' to prevent premature invocation of onSubscriptionIdle(...) callback when all consumer instances disconnect and re-connect
+    - defaultWatcherSubscriptionBacklogGracePeriodMillis // default grace period to prevent excessive SubscriptionBacklog and SubscriptionCatchUp events
+    - defaultWatcherSubscriptionBacklogGraceMessageCount // same as above but quantity of messages allowed in backlog
+    - watcherSubscriptionCheckIntervalMillis // how often to check for Subscription_xx events
+- Create a new 'watch' permission separate from 'produce' & 'consume' permissions
+- Modify PulsarAdmin commands:
+    - stats command  -> show information about attached Watchers
+    - grant/revoke_permission -> allow granting/revoking the 'watch' permission
+    
+- New PulsarAdmin commands
 
-    public void onSubscriptionDelete(String topic, String subscription);
-
-    public void onTopicBacklogEviction(String topic, String[] affectedSubscriptions);
-    
-    public void onTopicIdle(String topic);
-    
-    public void onTopicPartitionCountChange(String topic, int oldPartitionCount, int newPartitionCount);
-    
-    public void onTopicSchemaAdd();
-    
-    public void onTopicSchemaDelete();
-    
-    public void onTopicSchemaUpdate();
-    
-    public void onTopicTermination(String topic);
-    
-    public void onWatcherConnected(String topic, WatcherInfo watcherInfo);
-    
-    public void onWatcherPaused(String topic, WatcherInfo watcherInfo);
-    
-    public void onWatcherDisconnected(String topic, WatcherInfo watcherInfo);
-}
-```
-
+Example of usage:
 
 ```java
 PulsarClient client = PulsarClient.builder()
@@ -103,21 +106,64 @@ Watcher watcher = client.newWatcher()
 
 watcher.close();
 ```
-_Briefly list any new interfaces that will be introduced as part of this proposal or any existing interfaces that will be removed or changed. The purpose of this section is to concisely call out the public contract that will come along with this feature._
 
-A public interface is any change to the following:
-
-- Data format, Metadata format
-- The wire protocol and API behavior
-- Any class in the public packages
-- Monitoring
-- Command-line tools and arguments
-- Configuration settings
-- Anything else that will likely break existing users in some way when they upgrade
 
 ### Proposed Changes
 
 _Describe the new thing you want to do in appropriate detail. This may be fairly extensive and have large subsections of its own. Or it may be a few sentences. Use judgment based on the scope of the change._
+
+```java
+public interface WatchEventListener {
+
+    public void onConsumerConnect(String topic, String subscription, ConsumerCnx cnx);
+    
+    public void onConsumerStuck(String topic, String subscription, ConsumerCnx cnx);
+    
+    public void onConsumerUnstuck(String topic, String subscription, ConsumerCnx cnx);
+    
+    public void onConsumerStats(String topic, String subscription, ServerConsumerStats[] stats);
+    
+    public void onConsumerDisconnect(String topic, String subscription, ConsumerCnx cnx);
+    
+    public void onProducerConnect(String topic, ProducerCnx cnx);
+    
+    public void onProducerStats(String topic, ServerProducerStats[] stats);
+    
+    public void onProducerDisconnect(String topic, ProducerCnx cnx);
+    
+    public void onSubscriptionCreate(String topic, String subscription, SubscriptionType type, SubscriptionInitialPosition position);
+    
+    public void onSubscriptionBacklog(String topic, String subscription, long backlogSize);
+    
+    public void onSubscriptionCatchUp(String topic, String subscription);
+    
+    public void onSubscriptionSeek(String topic, String subscription, long oldPosition, long newPosition);
+
+    public void onSubscriptionIdle(String topic, String subscription);
+
+    public void onUnsubscribe(String topic, String subscription);
+
+    public void onTopicBacklogEviction(String topic, String[] affectedSubscriptions);
+    
+    public void onTopicIdle(String topic);
+    
+    public void onTopicPartitionCountChange(String topic, int oldPartitionCount, int newPartitionCount);
+    
+    public void onTopicSchemaAdd();
+    
+    public void onTopicSchemaDelete();
+    
+    public void onTopicSchemaUpdate();
+    
+    public void onTopicTermination(String topic);
+    
+    public void onWatcherConnected(String topic, WatcherInfo watcherInfo);
+    
+    public void onWatcherPaused(String topic, WatcherInfo watcherInfo);
+    
+    public void onWatcherDisconnected(String topic, WatcherInfo watcherInfo);
+}
+```
 
 ### Compatibility, Deprecation, and Migration Plan
 

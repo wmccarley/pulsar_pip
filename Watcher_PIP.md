@@ -63,10 +63,10 @@ Proposing the following changes:
     - defaultWatcherSubscriptionBacklogGraceMessageCount // same as above but quantity of messages allowed in backlog
     - watcherSubscriptionCheckIntervalMillis // how often to check for Subscription_xx events
 - Create several new 'watch' permission separate from 'produce' & 'consume' permissions
-    - watch_subscriptions(<sub name regex>)
-    - watch_consumers(<role regex>)
-    - watch_producers(<role regex>)
-    - watch_watchers(<role regex>)
+    - watch_subscriptions(_sub name regex_)
+    - watch_consumers(_role regex_)
+    - watch_producers(_role regex_)
+    - watch_watchers(_role regex_)
     - watch_topic
 - Modify PulsarAdmin commands:
     - stats command  -> show information about attached Watchers

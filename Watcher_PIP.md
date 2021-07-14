@@ -32,9 +32,10 @@ Proposing the following changes:
         - ConsumerConnect
         - ConsumerDisconnect
         - ConsumerStuck
-        - ConsumerUnstick
+        - ConsumerUnstuck
         - ProducerConnect
         - ProducerDisconnect
+        - ProducerIdle
         - SubscriptionCreate
         - SubscriptionBacklog
         - SubscriptionCatchUp
@@ -103,8 +104,8 @@ Watcher watcher = client.newWatcher()
     // this is to prevent unneccessary invocation of onTopicIdle(...) callback
     .topicIdleGracePeriodMillis(30000)
     
-    // implementation of the TopicEventListener interface
-    .eventListener(myTopicEventListener)
+    // implementation of the WatchEventListener interface
+    .eventListener(myWatchEventListener)
     .watch()
     
 ...
@@ -117,6 +118,82 @@ watcher.close();
 
 _Describe the new thing you want to do in appropriate detail. This may be fairly extensive and have large subsections of its own. Or it may be a few sentences. Use judgment based on the scope of the change._
 
+#### Protobuf Changes ####
+
+```protobuf
+message CommandWatch {
+    required uint64 watcher_id = 1;
+    required uint64 request_id  = 2;
+    required string topic = 3;
+    optional bool watch_producers = 4 [default = false];
+    optional string watch_producer_role = 5;
+    optional bool watch_consumers = 6 [default = false];
+    optional string watch_consumer_role = 7;
+    optional bool watch_subscriptions = 8 [default = false];
+    optional string watch_subscription_name = 9;
+    optional bool watch_watchers = 10 [default = false];
+    optional string watch_watchers_role = 11;
+    optional string watcher_name = 12;
+    repeated KeyValue metadata = 13
+}
+
+message CommandWatchSuccess {
+    required uint64 watcher_id = 1;
+    required uint64 request_id  = 2;
+    required string watcher_name = 3;
+}
+
+message CommandPauseWatch {
+    required uint64 watcher_id = 1;
+    required uint64 request_id  = 2;
+}
+
+message CommandPauseWatchSuccess {
+    required uint64 watcher_id = 1;
+    required uint64 request_id  = 2;
+    required uint64 pause_time = 3;
+}
+
+message CommandResumeWatch {
+    required uint64 watcher_id = 1;
+    required uint64 request_id  = 2;
+}
+
+message CommandResumeWatchSuccess {
+    required uint64 watcher_id = 1;
+    required uint64 request_id  = 2;
+    required uint64 resume_time = 3;
+}
+
+message CommandUnWatch {
+    required uint64 watcher_id = 1;
+    required uint64 request_id  = 2;
+}
+
+message CommandWatchEventConsumerConnect {
+}
+
+message CommandWatchEventConsumerDisconnect {
+}
+
+message CommandWatchEventConsumerStuck {
+}
+
+message CommandWatchEventConsumerUnstuck {
+}
+
+message BaseCommand {
+    enum Type {
+        ...
+        WATCH_EVENT_CONSUMER_CONNECT = 90;
+    }
+    
+    ...
+    
+    optional CommandWatchEventConsumerConnect watchEventConsumerConnect = 90;
+```
+
+#### Pulsar API Changes ####
 ```java
 public interface WatchEventListener {
 
@@ -135,6 +212,8 @@ public interface WatchEventListener {
     public void onProducerStats(String topic, ServerProducerStats[] stats);
     
     public void onProducerDisconnect(String topic, ProducerCnx cnx);
+    
+    public void onProducerIdle(String topic, ProducerCnx cnx, long lastActiveTime);
     
     public void onSubscriptionCreate(String topic, String subscription, SubscriptionType type, SubscriptionInitialPosition position);
     

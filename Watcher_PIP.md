@@ -75,7 +75,7 @@ Proposing the following changes:
     
 - New PulsarAdmin commands
 
-Example of usage:
+Example of watcher usage:
 
 ```java
 PulsarClient client = PulsarClient.builder()
@@ -165,12 +165,12 @@ message CommandResumeWatchSuccess {
     required uint64 resume_time = 3;
 }
 
-message CommandUnWatch {
+message CommandUnwatch {
     required uint64 watcher_id = 1;
     required uint64 request_id  = 2;
 }
 
-message CommandUnWatchSuccess {
+message CommandUnwatchSuccess {
     required uint64 watcher_id = 1;
     required uint64 request_id  = 2;
     required uint64 disconnect_time = 3;
@@ -191,16 +191,60 @@ message CommandWatchEventConsumerUnstuck {
 message BaseCommand {
     enum Type {
         ...
-        WATCH_EVENT_CONSUMER_CONNECT = 90;
+        WATCH = 90;
+        WATCH_SUCCESS = 91;
+        PAUSE_WATCH = 92;
+        PAUSE_WATCH_SUCCESS = 93;
+        RESUME_WATCH = 94;
+        RESUME_WATCH_SUCCESS = 95;
+        UNWATCH = 96;
+        UNWATCH_SUCCESS = 97;
+        WATCH_EVENT_CONSUMER_CONNECT = 98;
+        WATCH_EVENT_CONSUMER_DISCONNECT = 99;
+        WATCH_EVENT_CONSUMER_STUCK = 100;
+        WATCH_EVENT_CONSUMER_UNSTUCK = 101;
+        WATCH_EVENT_PRODUCER_CONNECTED = 102;
+        WATCH_EVENT_PRODUCER_DISCONNECT = 103;
+        WATCH_EVENT_PRODUCER_IDLE = 104;
+        WATCH_EVENT_SUBSCRIPTION_CREATE = 105;
+        WATCH_EVENT_SUBSCRIPTION_BACKLOG = 106;
+        WATCH_EVENT_SUBSCRIPTION_CATCHUP = 107;
+        WATCH_EVENT_SUBSCRIPTION_IDLE = 108;
+        WATCH_EVENT_SUBSCRIPTION_UNSUBSCRIBE = 109;
+        WATCH_EVENT_TOPIC_BACKLOG_EVICTION = 110;
+        WATCH_EVENT_TOPIC_IDLE = 111;
+        WATCH_EVENT_TOPIC_PARTITION_COUNT_CHANGE = 112;
+        WATCH_EVENT_TOPIC_SCHEMA_ADD = 113;
+        WATCH_EVENT_TOPIC_SCHEMA_DELETE = 114;
+        WATCH_EVENT_TOPIC_SCHEMA_UPDATE = 115;
+        WATCH_EVENT_TOPIC_TERMINATION = 116;
+        WATCH_EVENT_WATCHER_CONNECTED = 117;
+        WATCH_EVENT_WATCHER_PAUSED = 118;
+        WATCH_EVENT_WATCHER_UNPAUSED = 119;
+        WATCH_EVENT_WATCHER_DISCONNECTED = 120;
     }
     
     ...
-    
-    optional CommandWatchEventConsumerConnect watchEventConsumerConnect = 90;
+    optional CommandWatch watch = 90;
+    optional CommandWatchSuccess watchSuccess = 91;
+    optional CommandPauseWatch pauseWatch = 92;
+    optional CommandPauseWatchSuccess pauseWatchSuccess = 93;
+    optional CommandResumeWatch resumeWatch = 94;
+    optional CommandResumeWatchSuccess resumeWatchSuccess = 95;
+    optional CommandUnwatch unwatch = 96;
+    optional CommandUnwatchSuccess unwatchSuccess = 97;
+    optional CommandWatchEventConsumerConnect watchEventConsumerConnect = 98;
+    optional CommandWatchEventConsumerDisconnect watchEventConsumerDisconnect = 99;
+    optional CommandWatchEventConsumerStuck watchEventConsumerStuck = 100;
+    optional CommandWatchEventConsumerUnstuck watchEventConsumerUnstuck = 101;
 ```
 
 #### Pulsar API Changes ####
 ```java
+/**
+  * <p>The primary interface that must be implemented to use the Watcher functionality.
+  * 
+  */
 public interface WatchEventListener {
 
     public void onConsumerConnect(String topic, String subscription, ConsumerCnx cnx);
@@ -243,7 +287,7 @@ public interface WatchEventListener {
     
     public void onTopicSchemaDelete();
     
-    public void onTopicSchemaUpdate();
+    public void onTopicSchemaUpdate(Schema oldSchema, Schema newSchema);
     
     public void onTopicTermination(String topic);
     
@@ -269,14 +313,15 @@ defaultWatcherConsumerStuckPeriodMillis = 5000
 # resending the events
 defaultWatcherConsumerStuckResendPeriod = 3000
 
-# default grace period before subscription is considered 'idle' to prevent
-# premature invocation of onSubscriptionIdle(...) callback when all consumer
-# instances disconnect and re-connect
-defaultWatcherSubscriptionIdleGracePeriodMillis =
+# default grace period before subscription is considered 'idle' Set this to a
+# value large enough to prevent premature invocation of onSubscriptionIdle(...)
+# callback when all consumer instances disconnect and re-connect (for instance
+# when the topic moves to another broker)
+defaultWatcherSubscriptionIdleGracePeriodMillis = 10000
 
 # Default grace period to prevent excessive SubscriptionBacklog and
 # SubscriptionCatchUp events
-defaultWatcherSubscriptionBacklogGracePeriodMillis // 
+defaultWatcherSubscriptionBacklogGracePeriodMillis = 10000
 
 # Default backlog message count that is considered 'normal' we should not
 # fire SubscriptionBacklog events

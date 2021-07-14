@@ -29,11 +29,8 @@ Proposing the following changes:
     - CommandUnWatch
     - CommandUnWatchSuccess
     - CommandWatchEvent
-        - ConsumerConnect
-        - ConsumerDisconnect
-        - ConsumerStuck
-        - ConsumerUnstuck
-        - ProducerConnect
+        - ConsumerConnectionEvent
+        - ProducerConnectionEvent
         - ProducerDisconnect
         - ProducerIdle
         - SubscriptionCreate
@@ -121,6 +118,25 @@ _Describe the new thing you want to do in appropriate detail. This may be fairly
 #### Protobuf Changes ####
 
 ```protobuf
+message ConsumerConnectionMetadata {
+    required uint64 consumer_id = 1;
+    required uint64 request_id  = 2;
+    optional string consumer_name = 3;
+    optional int32 priority_level = 4;
+    repeated KeyValue metadata = 5;
+    optional string address = 6;
+    optional string connectedSince = 7;
+}
+
+message ProducerConnectionMetadata {
+    required uint64 producer_id = 1;
+    required uint64 request_id  = 2;
+    optional string producer_name = 3;
+    repeated KeyValue metadata = 5;
+    optional string address = 6;
+    optional string connectedSince = 7;
+}
+
 message CommandWatch {
     required uint64 watcher_id = 1;
     required uint64 request_id  = 2;
@@ -176,16 +192,32 @@ message CommandUnwatchSuccess {
     required uint64 disconnect_time = 3;
 }
 
-message CommandWatchEventConsumerConnect {
+message CommandWatchEventConsumerConnectionEvent {
+    enum ConsumerConnectionEventType {
+        Connect = 0;
+        Disconnect = 1;
+        Stuck = 2;
+        Unstuck = 3;
+    }
+    required uint64 watcher_id = 1;
+    required uint64 event_id  = 2;
+    required uint64 event_time = 3;
+    required ConsumerConnectionEventType type = 4;
+    required ConsumerConnectionMetadata conumerMetadata = 5;
 }
 
-message CommandWatchEventConsumerDisconnect {
-}
-
-message CommandWatchEventConsumerStuck {
-}
-
-message CommandWatchEventConsumerUnstuck {
+message CommandWatchEventProducerConnectionEvent {
+    enum ProducerConnectionEventType {
+        Connect = 0;
+        Disconnect = 1;
+        Idle = 2;
+        Active = 3;
+    }
+    required uint64 watcher_id = 1;
+    required uint64 event_id  = 2;
+    required uint64 event_time = 3;
+    required ProducerConnectionEventType type = 4;
+    required ProducerConnectionMetadata producerMetadata = 5;
 }
 
 message BaseCommand {
@@ -199,13 +231,10 @@ message BaseCommand {
         RESUME_WATCH_SUCCESS = 95;
         UNWATCH = 96;
         UNWATCH_SUCCESS = 97;
-        WATCH_EVENT_CONSUMER_CONNECT = 98;
-        WATCH_EVENT_CONSUMER_DISCONNECT = 99;
-        WATCH_EVENT_CONSUMER_STUCK = 100;
-        WATCH_EVENT_CONSUMER_UNSTUCK = 101;
-        WATCH_EVENT_PRODUCER_CONNECTED = 102;
-        WATCH_EVENT_PRODUCER_DISCONNECT = 103;
-        WATCH_EVENT_PRODUCER_IDLE = 104;
+        WATCH_EVENT_CONSUMER_CONNECTION_EVENT = 98;
+
+        WATCH_EVENT_PRODUCER_CONNECTION_EVENT = 99;
+
         WATCH_EVENT_SUBSCRIPTION_CREATE = 105;
         WATCH_EVENT_SUBSCRIPTION_BACKLOG = 106;
         WATCH_EVENT_SUBSCRIPTION_CATCHUP = 107;
@@ -233,10 +262,8 @@ message BaseCommand {
     optional CommandResumeWatchSuccess resumeWatchSuccess = 95;
     optional CommandUnwatch unwatch = 96;
     optional CommandUnwatchSuccess unwatchSuccess = 97;
-    optional CommandWatchEventConsumerConnect watchEventConsumerConnect = 98;
-    optional CommandWatchEventConsumerDisconnect watchEventConsumerDisconnect = 99;
-    optional CommandWatchEventConsumerStuck watchEventConsumerStuck = 100;
-    optional CommandWatchEventConsumerUnstuck watchEventConsumerUnstuck = 101;
+    optional CommandWatchEventConsumerConnectionEvent watchEventConsumerConnectionEvent = 98;
+    optional CommandWatchEventProducerConnectionEvent watchEventProducerConnectionEvent = 99;
 ```
 
 #### Pulsar API Changes ####
@@ -325,7 +352,7 @@ defaultWatcherSubscriptionBacklogGracePeriodMillis = 10000
 
 # Default backlog message count that is considered 'normal' we should not
 # fire SubscriptionBacklog events
-defaultWatcherSubscriptionBacklogGraceMessageCount
+defaultWatcherSubscriptionBacklogGraceMessageCount = 2000
 
 # How often to check for Subscription_xx events
 watcherSubscriptionCheckIntervalMillis = 3000
@@ -340,7 +367,9 @@ watcherSubscriptionCheckIntervalMillis = 3000
 
 ### Test Plan
 
-_Describe in few sentences how the BP will be tested. We are mostly interested in system tests (since unit-tests are specific to implementation details). How will we know that the implementation works as expected? How will we know nothing broke?_
+_Describe in few sentences how the PIP will be tested. We are mostly interested in system tests (since unit-tests are specific to implementation details). How will we know that the implementation works as expected? How will we know nothing broke?_
+
+This PIP consists entirely of new functionality in the form of a the proposed Watcher API.
 
 ### Rejected Alternatives
 

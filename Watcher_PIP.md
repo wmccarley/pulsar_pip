@@ -134,7 +134,7 @@ message CommandWatch {
     optional bool watch_watchers = 10 [default = false];
     optional string watch_watchers_role = 11;
     optional string watcher_name = 12;
-    repeated KeyValue metadata = 13
+    repeated KeyValue metadata = 13;
 }
 
 message CommandWatchSuccess {
@@ -168,6 +168,12 @@ message CommandResumeWatchSuccess {
 message CommandUnWatch {
     required uint64 watcher_id = 1;
     required uint64 request_id  = 2;
+}
+
+message CommandUnWatchSuccess {
+    required uint64 watcher_id = 1;
+    required uint64 request_id  = 2;
+    required uint64 disconnect_time = 3;
 }
 
 message CommandWatchEventConsumerConnect {
@@ -247,6 +253,37 @@ public interface WatchEventListener {
     
     public void onWatcherDisconnected(String topic, WatcherInfo watcherInfo);
 }
+```
+
+#### broker.conf Settings ####
+
+```ini
+# Whether the broker will allow watchers to connect
+enableWatchers = false
+
+# If a consumer stays at zero permits for more than this period of time the
+# ConsumerStuck event will be fired
+defaultWatcherConsumerStuckPeriodMillis = 5000
+
+# How frequently the broker should resend ConsumerStuck events, -1 disables
+# resending the events
+defaultWatcherConsumerStuckResendPeriod = 3000
+
+# default grace period before subscription is considered 'idle' to prevent
+# premature invocation of onSubscriptionIdle(...) callback when all consumer
+# instances disconnect and re-connect
+defaultWatcherSubscriptionIdleGracePeriodMillis =
+
+# Default grace period to prevent excessive SubscriptionBacklog and
+# SubscriptionCatchUp events
+defaultWatcherSubscriptionBacklogGracePeriodMillis // 
+
+# Default backlog message count that is considered 'normal' we should not
+# fire SubscriptionBacklog events
+defaultWatcherSubscriptionBacklogGraceMessageCount
+
+# How often to check for Subscription_xx events
+watcherSubscriptionCheckIntervalMillis = 3000
 ```
 
 ### Compatibility, Deprecation, and Migration Plan

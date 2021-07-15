@@ -192,32 +192,96 @@ message CommandUnwatchSuccess {
     required uint64 disconnect_time = 3;
 }
 
-message CommandWatchEventConsumerConnectionEvent {
-    enum ConsumerConnectionEventType {
+message CommandWatchEventConsumerLifecycleEvent {
+    enum ConsumerLifecycleEventType {
         Connect = 0;
         Disconnect = 1;
-        Stuck = 2;
-        Unstuck = 3;
     }
     required uint64 watcher_id = 1;
     required uint64 event_id  = 2;
     required uint64 event_time = 3;
-    required ConsumerConnectionEventType type = 4;
+    required ConsumerLifecycleEventType type = 4;
     required ConsumerConnectionMetadata conumerMetadata = 5;
 }
 
-message CommandWatchEventProducerConnectionEvent {
-    enum ProducerConnectionEventType {
-        Connect = 0;
-        Disconnect = 1;
-        Idle = 2;
-        Active = 3;
+message CommandWatchEventConsumerActivityEvent {
+    enum ConsumerActivityEventType {
+        Stuck = 1;
+        Unstuck = 2;
     }
     required uint64 watcher_id = 1;
     required uint64 event_id  = 2;
     required uint64 event_time = 3;
-    required ProducerConnectionEventType type = 4;
+    required ConsumerActivityEventType type = 4;
+    required ConsumerConnectionMetadata conumerMetadata = 5;
+    required uint64 permit_count = 6;
+    required uint64 last_ack_timestamp = 7;
+}
+
+message CommandWatchEventProducerLifecycleEvent {
+    enum ProducerLifecycleEventType {
+        Connect = 0;
+        Disconnect = 1;
+    }
+    required uint64 watcher_id = 1;
+    required uint64 event_id  = 2;
+    required uint64 event_time = 3;
+    required ProducerLifecycleEventType type = 4;
     required ProducerConnectionMetadata producerMetadata = 5;
+}
+
+message CommandWatchEventProducerActivityEvent {
+    enum ProducerLifecycleEventType {
+        Idle = 1;
+        Active = 2;
+    }
+    required uint64 watcher_id = 1;
+    required uint64 event_id  = 2;
+    required uint64 event_time = 3;
+    required ProducerActivityEventType type = 4;
+    required ProducerConnectionMetadata producerMetadata = 5;
+    optional uint64 last_send_timestamp = 7;
+}
+
+message CommandWatchEventSubscriptionLifecycleEvent {
+    enum SubscriptionLifecycleEventType {
+        Create = 0;
+        Delete = 1;
+    }
+    required uint64 watcher_id = 1;
+    required uint64 event_id  = 2;
+    required uint64 event_time = 3;
+    required SubscriptionLifecycleEventType type = 4;
+    optional InitialPosition initial_position = 4;
+}
+
+message CommandWatchEventSubscriptionActivityEvent {
+    enum SubscriptionActivityEventType {
+        Backlog = 0;
+        CatchUp = 1;
+        Idle = 2;
+    }
+}
+
+message CommandWatchEventSubscriptionModifyEvent {
+    enum SubscriptionModifyEventType {
+        Seek = 0;
+        Rebalance = 1;
+    }
+}
+
+message CommandWatchEventTopicSchemaModifyEvent {
+    enum TopicSchemaModifyEventType {
+        Create = 0;
+        Update = 1;
+        Delete = 2;
+    }
+    required uint64 watcher_id = 1;
+    required uint64 event_id  = 2;
+    required uint64 event_time = 3;
+    required TopicSchemaModifyEventType type = 4;
+    optional Schema old_schema = 5;
+    optional Schema new_schema = 6;
 }
 
 message BaseCommand {
@@ -231,15 +295,16 @@ message BaseCommand {
         RESUME_WATCH_SUCCESS = 95;
         UNWATCH = 96;
         UNWATCH_SUCCESS = 97;
-        WATCH_EVENT_CONSUMER_CONNECTION_EVENT = 98;
+        WATCH_EVENT_CONSUMER_LIFECYCLE_EVENT = 98;
+        WATCH_EVENT_CONSUMER_ACTIVITY_EVENT = 99;
 
-        WATCH_EVENT_PRODUCER_CONNECTION_EVENT = 99;
+        WATCH_EVENT_PRODUCER_LIFECYCLE_EVENT = 100;
+        WATCH_EVENT_PRODUCER_ACTIVITY_EVENT = 101;
 
-        WATCH_EVENT_SUBSCRIPTION_CREATE = 105;
-        WATCH_EVENT_SUBSCRIPTION_BACKLOG = 106;
-        WATCH_EVENT_SUBSCRIPTION_CATCHUP = 107;
-        WATCH_EVENT_SUBSCRIPTION_IDLE = 108;
-        WATCH_EVENT_SUBSCRIPTION_UNSUBSCRIBE = 109;
+        WATCH_EVENT_SUBSCRIPTION_LIFECYCLE_EVENT = 102;
+        WATCH_EVENT_SUBSCRIPTION_ACTIVITY_EVENT = 103;
+        WATCH_EVENT_SUBSCRIPTION_MODIFY_EVENT = 104;
+
         WATCH_EVENT_TOPIC_BACKLOG_EVICTION = 110;
         WATCH_EVENT_TOPIC_IDLE = 111;
         WATCH_EVENT_TOPIC_PARTITION_COUNT_CHANGE = 112;
@@ -262,8 +327,8 @@ message BaseCommand {
     optional CommandResumeWatchSuccess resumeWatchSuccess = 95;
     optional CommandUnwatch unwatch = 96;
     optional CommandUnwatchSuccess unwatchSuccess = 97;
-    optional CommandWatchEventConsumerConnectionEvent watchEventConsumerConnectionEvent = 98;
-    optional CommandWatchEventProducerConnectionEvent watchEventProducerConnectionEvent = 99;
+    optional CommandWatchEventConsumerLifecycleEvent watchEventConsumerLifecycleEvent = 98;
+    optional CommandWatchEventProducerLifecycleEvent watchEventProducerLifecycleEvent = 99;
 ```
 
 #### Pulsar API Changes ####

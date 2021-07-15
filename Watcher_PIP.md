@@ -445,6 +445,79 @@ message BaseCommand {
 ```
 
 #### Pulsar API Changes ####
+
+##### WatcherBuilder Interface #####
+```java
+package org.apache.pulsar.client.api;
+
+...
+
+/**
+ * {@link WatcherBuilder} is used to configure and create instances of {@link Watcher}.
+ *
+ * @see PulsarClient#newWatcher()
+ *
+ * @since 2.9.0
+ */
+@InterfaceAudience.Public
+@InterfaceStability.Stable
+public interface WatcherBuilder<T> extends Cloneable {
+
+    /**
+     * Create a copy of the current watcher builder.
+     */
+    WatcherBuilder clone();
+    
+    /**
+     * Load the configuration from provided <tt>config</tt> map.
+     */
+    WatcherBuilder loadConf(Map<String, Object> config);
+    
+    /**
+     * Finalize the {@link Watcher} creation by watching the topic.
+     */
+    Watcher watch() throws PulsarClientException;
+
+    /**
+     * Finalize the {@link Watcher} creation by watching the topic in asynchronous mode.
+     */
+    CompletableFuture<Watcher> watchAsync();
+
+    /**
+     * Specify the topics this watcher will watch.
+     */
+    WatcherBuilder topic(String... topicNames);
+
+    /**
+     * Specify a list of topics that this watcher will watch.
+     */
+    WatcherBuilder topics(List<String> topicNames);
+    
+    WatcherBuilder watchProducers(String roleRegex)
+    
+    WatcherBuilder watchSubscriptions(String subNameRegex)
+    
+    WatcherBuilder watchConsumers(String roleRegex)
+    
+    // this is to prevent excessive invocation of onSubscriptionBacklog(...) callback
+    WatcherBuilder subscriptionBacklogGracePeriodMillis(final long gracePeriodMillis)
+    WatcherBuilder subscriptionBacklogGraceMessageCount(final long graceMessageCount)
+    
+    // grace period before subscription is considered 'idle' for this watcher
+    // this is to prevent premature invocation of onSubscriptionIdle(...) callback
+    // when all consumer instances disconnect and re-connect
+    WatcherBuilder subscriptionIdleGracePeriodMillis(30000)
+    
+    // grace period before topic is considered 'idle' for this watcher
+    // this is to prevent unneccessary invocation of onTopicIdle(...) callback
+    WatcherBuilder topicIdleGracePeriodMillis(30000)
+    
+    // Set the implementation of the WatchEventListener interface this watcher will use
+    WatcherBuilder eventListener(WatchEventListener watchEventListener)
+}
+```
+
+##### WatchEventListener #####
 ```java
 /**
   * <p>The primary interface that must be implemented to use the Watcher functionality.

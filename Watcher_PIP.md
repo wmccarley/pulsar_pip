@@ -446,7 +446,69 @@ message BaseCommand {
 
 #### Pulsar API Changes ####
 
-##### WatcherBuilder Interface #####
+##### New Watcher Interface #####
+```java
+package org.apache.pulsar.client.api;
+
+...
+
+/**
+ * An interface that abstracts behavior of Pulsar's watcher.
+ *
+ * <p>All the operations on the Watcher instance are thread safe.
+ *
+ * @since 2.9.0
+ */
+@InterfaceAudience.Public
+@InterfaceStability.Stable
+public interface Consumer<T> extends Closeable {
+
+    /**
+     * Get a topic for the consumer.
+     *
+     * @return topic for the consumer
+     */
+    String getTopic();
+    
+    /**
+     * Pause this watcher.
+     *
+     * <p>This call blocks until the watcher is paused.
+     *
+     * @throws PulsarClientException.WatcherAlreadyPausedException if the
+     * watcher is already paused
+     */
+    void pause() throws PulsarClientException;
+    
+    /**
+     * Asynchronously pause the watcher.
+     *
+     * @see Watcher#pause()
+     * @return {@link CompletableFuture} to track the operation
+     */
+    CompletableFuture<Void> pauseAsync();
+    
+    /**
+     * Resume this watcher.
+     *
+     * <p>This call blocks until the watcher is resumed.
+     *
+     * @throws PulsarClientException.WatcherNotPausedException if the
+     * watcher is not paused
+     */
+    void resume() throws PulsarClientException;
+    
+    /**
+     * Asynchronously resume the watcher.
+     *
+     * @see Watcher#resume()
+     * @return {@link CompletableFuture} to track the operation
+     */
+    CompletableFuture<Void> resumeAsync();
+}
+```
+
+##### New WatcherBuilder Interface #####
 ```java
 package org.apache.pulsar.client.api;
 
@@ -517,7 +579,7 @@ public interface WatcherBuilder<T> extends Cloneable {
 }
 ```
 
-##### WatchEventListener #####
+##### New WatchEventListener #####
 ```java
 /**
   * <p>The primary interface that must be implemented to use the Watcher functionality.
@@ -577,7 +639,58 @@ public interface WatchEventListener {
 }
 ```
 
-#### broker.conf Settings ####
+##### New PulsarClientException Subclasses #####
+```java
+package org.apache.pulsar.client.api;
+
+...
+
+/**
+ * Base type of exception thrown by Pulsar client.
+ */
+@InterfaceAudience.Public
+@InterfaceStability.Stable
+@SuppressWarnings("serial")
+public class PulsarClientException extends IOException {
+
+    ...
+
+    /**
+     * Watcher already paused exception thrown by Pulsar client.
+     */
+    public static class WatcherAlreadyPausedException extends PulsarClientException {
+        /**
+         * Constructs an {@code WatcherAlreadyPausedException} with the specified detail message.
+         *
+         * @param msg
+         *        The detail message (which is saved for later retrieval
+         *        by the {@link #getMessage()} method)
+         */
+        public WatcherAlreadyPausedException(String msg) {
+            super(msg);
+        }
+    }
+    
+    /**
+     * Watcher not paused exception thrown by Pulsar client.
+     */
+    public static class WatcherNotPausedException extends PulsarClientException {
+        /**
+         * Constructs an {@code WatcherNotPausedException} with the specified detail message.
+         *
+         * @param msg
+         *        The detail message (which is saved for later retrieval
+         *        by the {@link #getMessage()} method)
+         */
+        public WatcherNotPausedException(String msg) {
+            super(msg);
+        }
+    }
+    
+}
+```
+
+#### New Broker Configuration Settings (broker.conf)####
 
 ```ini
 # Whether the broker will allow watchers to connect

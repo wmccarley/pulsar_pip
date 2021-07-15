@@ -78,6 +78,12 @@ Example of watcher usage:
 WatchEventListener myWatchEventListener = new DefaultNoOpWatchEventListener() {
 
     @Override
+    public void onConsumerConnect(String topic, String subscription, ConsumerCnx cnx) {
+        System.out.println(String.format("Consumer with address: {} connected to: {}/{} ",
+            cnx.getAddress(), topic, subscription));
+    }
+
+    @Override
     public void onSubscriptionCreate(String topic, String subscription, SubscriptionType type,
             SubscriptionInitialPosition position) {
         System.out.println(String.format("New subscription named: {} created on topic: {}",
@@ -92,20 +98,11 @@ PulsarClient client = PulsarClient.builder()
                               
 Watcher watcher = client.newWatcher()
     .topic("persistent://tenant/ns/topic")
-    
-    .watchTopicEvents();
-    
-    .watchProducers("role-1");
-    
     .watchSubscriptions("mysub-.*");
-    
     .watchConsumers("role-1");
-    
-    ...
-    
     .eventListener(myWatchEventListener)
     .watch()
-    
+
 ...
 
 watcher.close();

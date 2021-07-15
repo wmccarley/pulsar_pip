@@ -75,6 +75,17 @@ Proposing the following changes:
 Example of watcher usage:
 
 ```java
+WatchEventListener myWatchEventListener = new DefaultNoOpWatchEventListener() {
+
+    @Override
+    public void onSubscriptionCreate(String topic, String subscription, SubscriptionType type,
+            SubscriptionInitialPosition position) {
+        System.out.println(String.format("New subscription named: {} created on topic: {}",
+            subscription, topic));
+    }
+    
+};
+
 PulsarClient client = PulsarClient.builder()
     .serviceUrl("pulsar+ssl://broker:6651")
     .build();
@@ -82,26 +93,16 @@ PulsarClient client = PulsarClient.builder()
 Watcher watcher = client.newWatcher()
     .topic("persistent://tenant/ns/topic")
     
-    .watchProducers("role-1")
+    .watchTopicEvents();
     
-    .watchSubscriptions("mysub-.*")
+    .watchProducers("role-1");
     
-    .watchConsumers("role-1")
+    .watchSubscriptions("mysub-.*");
     
-    // this is to prevent excessive invocation of onSubscriptionBacklog(...) callback
-    .subscriptionBacklogGracePeriodMillis(30000)
-    .subscriptionBacklogGraceMessageCount(5000)
+    .watchConsumers("role-1");
     
-    // grace period before subscription is considered 'idle' for this watcher
-    // this is to prevent premature invocation of onSubscriptionIdle(...) callback
-    // when all consumer instances disconnect and re-connect
-    .subscriptionIdleGracePeriodMillis(30000)
+    ...
     
-    // grace period before topic is considered 'idle' for this watcher
-    // this is to prevent unneccessary invocation of onTopicIdle(...) callback
-    .topicIdleGracePeriodMillis(30000)
-    
-    // implementation of the WatchEventListener interface
     .eventListener(myWatchEventListener)
     .watch()
     
@@ -461,21 +462,33 @@ package org.apache.pulsar.client.api;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Stable
-public interface Consumer<T> extends Closeable {
+public interface Watcher extends Closeable {
 
     /**
-     * Get a topic for the consumer.
-     *
-     * @return topic for the consumer
+     * Get topics for the watcher.
      */
-    String getTopic();
+    String[] getTopics();
+    
+    boolean isWatchingTopicEvents();
+    
+    boolean isWatchingProducers();
+    
+    String getWatchProducersRolePattern();
+    
+    boolean isWatchingConsumers();
+    
+    String getWatchConsumersRolePattern();
+    
+    boolean isWatchingSubscriptions();
+    
+    String getWatchSubscriptionNamePattern();
     
     /**
      * Pause this watcher.
      *
      * <p>This call blocks until the watcher is paused.
      *
-     * @throws PulsarClientException.WatcherAlreadyPausedException if the
+     * @throws PulsarClientException.WatcherPausedException if the
      * watcher is already paused
      */
     void pause() throws PulsarClientException;
@@ -505,6 +518,24 @@ public interface Consumer<T> extends Closeable {
      * @return {@link CompletableFuture} to track the operation
      */
     CompletableFuture<Void> resumeAsync();
+    
+    /**
+     * Close this watcher.
+     *
+     * <p>This call blocks until the watcher is closed.
+     *
+     * @throws PulsarClientException.AlreadyClosedException if the
+     * watcher is already closed
+     */
+    void close() throws PulsarClientException;
+    
+    /**
+     * Asynchronously close the watcher.
+     *
+     * @see Watcher#close()
+     * @return {@link CompletableFuture} to track the operation
+     */
+    CompletableFuture<Void> closeAsync();
 }
 ```
 
@@ -555,15 +586,20 @@ public interface WatcherBuilder<T> extends Cloneable {
      */
     WatcherBuilder topics(List<String> topicNames);
     
-    WatcherBuilder watchProducers(String roleRegex)
+    /**
+     *
+     */
+    WatcherBuilder watchTopicEvents();
     
-    WatcherBuilder watchSubscriptions(String subNameRegex)
+    WatcherBuilder watchProducers(String roleRegex);
     
-    WatcherBuilder watchConsumers(String roleRegex)
+    WatcherBuilder watchSubscriptions(String subNameRegex);
+    
+    WatcherBuilder watchConsumers(String roleRegex);
     
     // this is to prevent excessive invocation of onSubscriptionBacklog(...) callback
-    WatcherBuilder subscriptionBacklogGracePeriodMillis(final long gracePeriodMillis)
-    WatcherBuilder subscriptionBacklogGraceMessageCount(final long graceMessageCount)
+    WatcherBuilder subscriptionBacklogGracePeriodMillis(final long gracePeriodMillis);
+    WatcherBuilder subscriptionBacklogGraceMessageCount(final long graceMessageCount);
     
     // grace period before subscription is considered 'idle' for this watcher
     // this is to prevent premature invocation of onSubscriptionIdle(...) callback
@@ -658,15 +694,15 @@ public class PulsarClientException extends IOException {
     /**
      * Watcher already paused exception thrown by Pulsar client.
      */
-    public static class WatcherAlreadyPausedException extends PulsarClientException {
+    public static class WatcherPausedException extends PulsarClientException {
         /**
-         * Constructs an {@code WatcherAlreadyPausedException} with the specified detail message.
+         * Constructs an {@code WatcherPausedException} with the specified detail message.
          *
          * @param msg
          *        The detail message (which is saved for later retrieval
          *        by the {@link #getMessage()} method)
          */
-        public WatcherAlreadyPausedException(String msg) {
+        public WatcherPausedException(String msg) {
             super(msg);
         }
     }
